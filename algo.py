@@ -49,7 +49,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             print(f"number of noising steps = {t_star}")
         
         # Step 3 : Sample z via reverse diffusion : equation 7
-        z = diffusing_model.sampling_spliting_z(t_star, x, x_true, y, n, show_steps=show)
+        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, y, n, show_steps=show)
 
         if n > N_burn_in:
             x_samples.append(z)

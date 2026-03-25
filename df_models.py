@@ -32,7 +32,7 @@ class DDPM:
     x_start = x_start.clamp(-1.,1.)
     return(x_start)
 
-  def sampling_spliting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
+  def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
         with torch.no_grad():  # mode eval
             xt = u_0 
             xhat = torch.randn(self.imgshape, device=self.device)
@@ -118,8 +118,8 @@ import numpy as np
 from tqdm import tqdm
 
 class LDM:
-    def __init__(self, repo_id="CompVis/ldm-celebahq-256", guidance_scale=1.0,
-                 imgshape=(1, 3, 256, 256), device="cpu"):
+    def __init__(self,num_diffusion_timesteps=1000, beta_start=0.0001, beta_end=0.002, guidance_scale=1.0,
+                 imgshape=(1, 3, 256, 256), device="cpu", repo_id="CompVis/ldm-celebahq-256"):
         pipe = LDMPipeline.from_pretrained(repo_id)
         self.vae = pipe.vqvae
         self.unet = pipe.unet
@@ -134,15 +134,15 @@ class LDM:
         self.imgshape = imgshape
 
         # Reproduction de la même interface que DDPM
-        self.num_diffusion_timesteps = self.scheduler.config.num_train_timesteps
+        self.num_diffusion_timesteps = num_diffusion_timesteps
         self.reversed_time_steps = np.arange(self.num_diffusion_timesteps)[::-1]
-
-        alphas_cumprod = self.scheduler.alphas_cumprod.numpy()
-        self.alphas_cumprod = alphas_cumprod
-        self.alphas_cumprod_prev = np.append(1.0, alphas_cumprod[:-1])
-        self.alphas = self.scheduler.alphas.numpy()
-        self.betas = self.scheduler.betas.numpy()
-
+        self.betas = np.linspace(beta_start, beta_end, self.num_diffusion_timesteps,
+                                  dtype=np.float64)
+        self.alphas = 1.0 - self.betas
+        self.alphas_cumprod = np.cumprod(self.alphas, axis=0)
+        self.alphas_cumprod_prev = np.append(1.0, self.alphas_cumprod[:-1])
+        self.sigma = np.sqrt(1 - self.alphas_cumprod_prev )
+        
         # shape de l'espace latent : (1, C_lat, H/f, W/f)
         # Pour LDM-256 CelebA-HQ : f=4, C_lat=3 → latent (1,3,64,64)
         b, c, h, w = imgshape
