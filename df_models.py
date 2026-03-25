@@ -5,7 +5,7 @@ import tqdm
 from utils import *
 
 class DDPM:
-  def __init__(self, model, num_diffusion_timesteps=1000, beta_start=0.0001, beta_end=0.002, imgshape=(1,3,256,256)):
+  def __init__(self, model, num_diffusion_timesteps=1000, beta_start=0.0001, beta_end=0.002, imgshape=(1,3,256,256), device="cpu"):
     self.num_diffusion_timesteps = num_diffusion_timesteps
     self.reversed_time_steps = np.arange(self.num_diffusion_timesteps)[::-1]
     self.betas = np.linspace(beta_start, beta_end, self.num_diffusion_timesteps,
@@ -16,10 +16,11 @@ class DDPM:
     self.sigma = np.sqrt(1 - self.alphas_cumprod_prev )
     self.model = model
     self.imgshape = imgshape
+    self.device = device
 
 
-  def get_eps_from_model(self, x, t, device="cpu"):
-    model_output = self.model(x, torch.tensor(t, device=device).unsqueeze(0))
+  def get_eps_from_model(self, x, t):
+    model_output = self.model(x, torch.tensor(t, device=self.device).unsqueeze(0))
     model_output = model_output[:,:3,:,:]
     return(model_output)
 
@@ -31,10 +32,10 @@ class DDPM:
     x_start = x_start.clamp(-1.,1.)
     return(x_start)
 
-  def sampling_spliting_z(self, t_start, u_0, x_true, y, iteration, show_steps, device="cpu"):
+  def sampling_spliting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
         with torch.no_grad():  # mode eval
             xt = u_0 
-            xhat = torch.randn(self.imgshape, device=device)
+            xhat = torch.randn(self.imgshape, device=self.device)
             # t_start = min(t_start, 100)
             if iteration < 20 : 
                 t_end = self.num_diffusion_timesteps - (t_start //2)
@@ -45,9 +46,9 @@ class DDPM:
 
             for i, t in enumerate(diff_iter):
                 if t > 1:
-                    z = torch.randn(self.imgshape, device=device)
+                    z = torch.randn(self.imgshape, device=self.device)
                 else:
-                    z = torch.zeros(self.imgshape, device=device)
+                    z = torch.zeros(self.imgshape, device=self.device)
 
                 alpha_t = self.alphas[t]
                 alpha_bar_t = self.alphas_cumprod[t]
@@ -63,14 +64,14 @@ class DDPM:
 
         return xt
     
-  def posterior_sampling(self, linear_operator, y, x_true=None, show_steps=True, vis_y=None, device="cpu"):
+  def posterior_sampling(self, linear_operator, y, x_true=None, show_steps=True, vis_y=None):
 
     # visualization image for the observation y:
     if vis_y==None:
       vis_y = y
 
     # initialize xt for t=T
-    x = torch.randn(self.imgshape,device=device)
+    x = torch.randn(self.imgshape,device=self.device)
     x.requires_grad = True
 
 
@@ -82,7 +83,7 @@ class DDPM:
       beta_t = self.betas[t]
       sigma_t = np.sqrt(beta_t)
 
-      z = torch.randn(self.imgshape, device=device)
+      z = torch.randn(self.imgshape, device=self.device)
 
       xhat = self.predict_xstart_from_eps(x, self.get_eps_from_model(x,t), t)
 
