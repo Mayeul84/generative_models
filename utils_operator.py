@@ -42,6 +42,7 @@ class Inpainting():
 
     def __init__(self,mask=0.5, imgshape=None, device="cpu"):
 
+        self.device = device
         # If mask is a float, then it corresponds to the amount of known pixels for a random mask.
         if isinstance(mask,float):
             height, width = imgshape
@@ -66,7 +67,7 @@ class Inpainting():
         vol = height*width
 
         # Initialize the mask as a flattened vector of zeros
-        mask = torch.zeros(vol, dtype=torch.float32)
+        mask = torch.zeros(vol, dtype=torch.float32, device=self.device)
         
         # Randomly choose M indices to be observed (set to 1)
         observed_indices = torch.randperm(vol)[:N]
@@ -79,13 +80,13 @@ class Inpainting():
 
         return mask
 
-    def build_H(self,mask, device="cpu"):
+    def build_H(self,mask):
         # Get indices of non-zero elements from the mask matrix
-        nonzero_indices = torch.nonzero(mask.flatten(), as_tuple=False)[:, 0].to(device)
+        nonzero_indices = torch.nonzero(mask.flatten(), as_tuple=False)[:, 0].to(self.device)
 
         # Define the number of measurements 
         M = len(nonzero_indices)
-        nonzero_indices = torch.stack([nonzero_indices, torch.arange(0, M, device=device)]).cpu()
+        nonzero_indices = torch.stack([nonzero_indices, torch.arange(0, M, device=self.device)]).cpu()
 
         # Create a sparse tensor from the non-zero indices
         values = np.ones(M)  # All elements are ones for binary matrix
@@ -93,9 +94,8 @@ class Inpainting():
 
         return H
     
-
     ### MAIN FUNCTION (sampling ~ p(x|z,y))
-    def sample_x_given_z_y(self, z, p2, y_flat, sigma2, device="cpu"):
+    def sample_x_given_z_y(self, z, p2, y_flat, sigma2):
         z_flat = z.flatten()
 
         HtH = self.HtH
@@ -107,7 +107,7 @@ class Inpainting():
         summ = sum_chunk(A, B).cpu()
         moy = cov.dot(summ)
     
-        return sample_from_sparse_gaussian(moy, cov).view(z.shape).to(device)
+        return sample_from_sparse_gaussian(moy, cov).view(z.shape).to(self.device)
     
     def linear_operator(self,x):
         return x*self.mask
