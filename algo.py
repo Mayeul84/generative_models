@@ -4,6 +4,8 @@ from diffusers import LDMPipeline
 from tqdm import tqdm
 import numpy as np
 
+from df_models import LDM
+
 def inverse_variance_function(noise_level, model):
     closest_t_index = np.argmin(np.abs( (1-model.alphas_cumprod) - noise_level**2))
     return closest_t_index
@@ -38,7 +40,11 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         x = operator.sample_x_given_z_y(z, ro**2, y_flatten, noise_level**2).float()
 
         # Step 2: estimating noise level
-        noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+        if isinstance(diffusing_model, LDM):
+            l = diffusing_model.encode(x)
+            noise_level = estimate_sigma(l[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+        else:
+            noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
         
         # Step 3: find t
         t_star = inverse_variance_function(noise_level,model=diffusing_model)
