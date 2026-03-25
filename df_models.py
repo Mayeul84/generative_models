@@ -62,9 +62,9 @@ class DDPM:
             if show_steps :
                     y = y.to(self.device)
                     x_true = x_true.to(self.device)
-                    x = x.to(self.device)
+                    xt = xt.to(self.device)
                     xhat = xhat.to(self.device)
-                    pilimg = display_as_pilimg(torch.cat(( y, x_true, x, xhat), dim=3))
+                    pilimg = display_as_pilimg(torch.cat(( y, x_true, xt, xhat), dim=3))
 
         return xt
     
@@ -231,10 +231,10 @@ class LDM:
             if show_steps:
                 y = y.to(self.device)
                 x_true = x_true.to(self.device)
-                x = x.to(self.device)
+                xt = xt.to(self.device)
                 xhat = xhat.to(self.device)
-                pilimg = display_as_pilimg(torch.cat(( y, x_true, x, xhat), dim=3))
-
+                pilimg = display_as_pilimg(torch.cat(( y, x_true, xt, xhat), dim=3))
+                
         return xt
 
     # ------------------------------------------------------------------ #
