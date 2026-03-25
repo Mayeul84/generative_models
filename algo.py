@@ -16,14 +16,13 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
     noise_level = estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
     x_flatten = x_true.flatten()  
-    y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
+    y_flatten = x_flatten + noise_level * torch.randn_like(x_flatten)
     y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
 
     N_burn_in = Burn_in_steps
     x_samples = []
     time = []
 
-    sigma_noise =0.1 # ??
     show = not show_only_last
 
     for n in tqdm(range(MCMC_steps)):  # MCMC
