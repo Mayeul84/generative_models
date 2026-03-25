@@ -180,6 +180,21 @@ class LDM:
         alpha_bar = self.alphas_cumprod[t]
         l0 = (l - np.sqrt(1.0 - alpha_bar) * eps) / np.sqrt(alpha_bar)
         return l0.clamp(-1., 1.)
+    
+    def estimate_sigma_latent(self, x):
+        """
+        Estime sigma via Tweedie à t=1 dans l'espace latent.
+        """
+        with torch.no_grad():
+            l = self.encode(x)
+            t = 1
+            # Ajouter un bruit minimal pour stabiliser
+            l_noisy = l + np.sqrt(1 - self.alphas_cumprod[t]) * torch.randn_like(l)
+            eps = self.get_eps_from_model(l_noisy, t)
+            lhat = self.predict_xstart_from_eps(l_noisy, eps, t)
+            # Le résidu entre l et lhat est une estimation du bruit
+            sigma = (l - lhat).std().item()
+        return sigma
 
     # ------------------------------------------------------------------ #
     #  Équivalent sampling_splitting_z  →  étape z du SGS  (eq. 7)

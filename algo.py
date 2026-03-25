@@ -41,9 +41,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
         # Step 2: estimating noise level
         if isinstance(diffusing_model, LDM):
-            with torch.no_grad():
-                l = diffusing_model.encode(x)
-            noise_level = estimate_sigma(l[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+            noise_level = diffusing_model.estimate_sigma(x, channel_axis=0, average_sigmas=True)
         else:
             noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
         
