@@ -110,17 +110,19 @@ from tqdm import tqdm
 
 class LDM:
     def __init__(self, repo_id="CompVis/ldm-celebahq-256", guidance_scale=1.0,
-                 imgshape=(1, 3, 256, 256)):
+                 imgshape=(1, 3, 256, 256), device="cpu"):
         pipe = LDMPipeline.from_pretrained(repo_id)
         self.vae = pipe.vqvae
         self.unet = pipe.unet
+        self.device = "cpu"
+        self.to(device)
+
         self.scheduler = pipe.scheduler
         self.vae.eval()
         self.unet.eval()
 
         self.guidance_scale = guidance_scale
         self.imgshape = imgshape
-        self.device = "cpu"
 
         # Reproduction de la même interface que DDPM
         self.num_diffusion_timesteps = self.scheduler.config.num_train_timesteps
