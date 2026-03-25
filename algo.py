@@ -46,7 +46,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
         # Step 2: estimating noise level
         if isinstance(diffusing_model, LDM):
-            noise_level = diffusing_model.estimate_sigma_latent(x, channel_axis=0, average_sigmas=True)
+            noise_level = diffusing_model.estimate_sigma_latent(x)
         else:
             noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
         
