@@ -1,0 +1,107 @@
+import torch
+import numpy as np
+from scipy.sparse.linalg import splu
+import scipy.sparse as sp
+
+def sum_chunk(A, B, device="cpu"):
+    A = torch.tensor(A).cpu().squeeze().numpy()
+    B = torch.tensor(B).cpu().squeeze().numpy()
+    sum_result = np.zeros_like(A)
+    chunk_size = 10000  
+    size = A.size
+
+    # Perform addition in chunks
+    for i in range(0, size, chunk_size):
+        chunk_A = A[i:i+chunk_size]
+        chunk_B = B[i:i+chunk_size]
+        sum_result[i:i+chunk_size] = chunk_A + chunk_B
+    
+    return torch.tensor(sum_result).to(device)
+
+### To sample from N(mu, LtL)
+def sparse_cholesky(A):
+    n = A.shape[0]
+    LU = splu(A.tocsc(), diag_pivot_thresh=0)
+    if (LU.perm_r == np.arange(n)).all() and (LU.U.diagonal() > 0).all():
+        return LU.L @ sp.diags(LU.U.diagonal()**0.5)
+    else:
+        raise ValueError('The matrix is not positive definite')
+
+### Sample from N(mu,LtL)
+def sample_from_sparse_gaussian(mu, cov_matrix, device="cpu"):
+    dim = len(mu)
+    z = np.random.normal(size=(dim,))
+    L = sparse_cholesky(cov_matrix)
+    derive = L.dot(z)
+    x = mu + derive
+    return torch.tensor(x).to(device)
+
+### DEFINING CLASS OF OPERATORS
+
+class Inpainting():
+
+    def __init__(self,mask=0.5, imgshape=None, device="cpu"):
+
+        # If mask is a float, then it corresponds to the amount of known pixels for a random mask.
+        if isinstance(mask,float):
+            self.mask = self.build_random_mask(imgshape, N=int(imgshape*mask))
+
+        self.H = self.build_H(mask=self.mask,device=device)
+        self.HtH = (self.H).dot(self.H.T)
+
+    def build_random_mask(imgshape, N):
+        """
+        Create a binary matrix representing a subsampling pattern for image inpainting.
+
+        Parameters:
+            N (int): Total number of pixels in the original, full-resolution image.
+            M (int): Number of observed or known pixel values in the subsampled image.
+
+        Returns:
+            torch.Tensor: Binary matrix representing the subsampling pattern.
+        """
+        # Initialize the mask as a flattened vector of zeros
+        mask = torch.zeros(imgshape, dtype=torch.float32)
+        
+        # Randomly choose M indices to be observed (set to 1)
+        observed_indices = torch.randperm(imgshape)[:N]
+        mask[observed_indices] = 1
+        
+        # Reshape the mask to a 2D image if necessary
+        height = width = int(np.sqrt(N))  
+        mask = mask.reshape(height, width)
+        
+        mask = mask.repeat(1, 3, 1, 1)
+
+        return mask
+
+    def build_H(self,mask, device="cpu"):
+        # Get indices of non-zero elements from the mask matrix
+        nonzero_indices = torch.nonzero(mask.flatten(), as_tuple=False)[:, 0].to(device)
+
+        # Define the number of measurements 
+        M = len(nonzero_indices)
+        nonzero_indices = torch.stack([nonzero_indices, torch.arange(0, M, device=device)]).cpu()
+
+        # Create a sparse tensor from the non-zero indices
+        values = np.ones(M)  # All elements are ones for binary matrix
+        H = sp.coo_matrix((values, (nonzero_indices[0], nonzero_indices[1])), shape=(len(mask.flatten()), M)).tocsc()
+
+        return H
+    
+
+    ### MAIN FUNCTION (sampling ~ p(x|z,y))
+    def sample_x_given_z_y(self, z, p2, y_flat, sigma2, HtH, eye_sparse, device="cpu"):
+        z_flat = z.flatten()
+        eye_sparse = sp.eye(HtH.shape[0])
+
+        cov = p2 * (eye_sparse - p2 * HtH / (p2 + sigma2))
+        A = y_flat / sigma2 
+        B = z_flat / p2
+        summ = sum_chunk(A, B).cpu()
+        moy = cov.dot(summ)
+    
+        return sample_from_sparse_gaussian(moy, cov).view(z.shape).to(device)
+    
+    def linear_operator(self,x):
+        return x*self.mask
