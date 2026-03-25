@@ -39,7 +39,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
         
         # Step 3: find t
-        t_star = inverse_variance_function(noise_level)
+        t_star = inverse_variance_function(noise_level,model=diffusing_model)
         time.append(t_star)
 
         if show:
