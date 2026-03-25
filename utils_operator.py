@@ -48,7 +48,7 @@ class Inpainting():
             height, width = imgshape
             self.mask = self.build_random_mask(imgshape, N=int(height*width*mask))
 
-        self.H = self.build_H(mask=self.mask,device=device)
+        self.H = self.build_H(mask=self.mask)
         self.HtH = (self.H).dot(self.H.T)
 
     def build_random_mask(self,imgshape, N):
