@@ -184,57 +184,74 @@ class LDM:
     # ------------------------------------------------------------------ #
     #  Équivalent sampling_splitting_z  →  étape z du SGS  (eq. 7)
     # ------------------------------------------------------------------ #
-    def sampling_splitting_z(self, t_start, u_0, x_true, y,
-                             iteration, show_steps):
+    def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
+
         """
-        Débruitage stochastique dans l'espace latent.
+        Débruitage stochastique dans l'espace latent avec guidance.
         u_0 : image pixel (1,3,H,W) – observation bruitée courante x^(n)
         Retourne une image pixel débruitée.
         """
+
+        u_0 = u_0.to(self.device)
+
+        # Encodage dans l'espace latent
         with torch.no_grad():
-            # Encodage dans l'espace latent
             lt = self.encode(u_0)
 
-            # Curriculum burn-in : early-stopping pendant les 20 premières iter
-            if iteration < 20:
-                t_end = self.num_diffusion_timesteps - (t_start // 2)
-            else:
-                t_end = self.num_diffusion_timesteps
+        # Curriculum burn-in : early-stopping pendant les 20 premières iter
+        if iteration < 20:
+            t_end = self.num_diffusion_timesteps - (t_start // 2)
+        else:
+            t_end = self.num_diffusion_timesteps
 
-            diff_iter = self.reversed_time_steps[
-                self.num_diffusion_timesteps - t_start : t_end
-            ]
+        diff_iter = self.reversed_time_steps[
+            self.num_diffusion_timesteps - t_start : t_end
+        ]
 
-            for i, t in enumerate(diff_iter):
-                z = (torch.randn_like(lt) if t > 1
-                     else torch.zeros_like(lt))
+        if len(diff_iter) == 0:
+            return self.decode(lt)
 
-                alpha_t      = self.alphas[t]
-                alpha_bar_t  = self.alphas_cumprod[t]
-                alpha_bar_tm1 = self.alphas_cumprod[t - 1] if t > 0 else 1.0
-                sigma_t = np.sqrt(
-                    ((1 - alpha_bar_tm1) / (1 - alpha_bar_t)) * self.betas[t]
-                )
+        eps = None
+        for i, t in enumerate(diff_iter):
+            lt = lt.detach().requires_grad_(True)
 
-                eps = self.get_eps_from_model(lt, t)
+            z = (torch.randn_like(lt) if t > 1 else torch.zeros_like(lt))
 
-                # Pas DDPM dans l'espace latent
+            alpha_t       = self.alphas[t]
+            alpha_bar_t   = self.alphas_cumprod[t]
+            alpha_bar_tm1 = self.alphas_cumprod[t - 1] if t > 0 else 1.0
+            sigma_t = np.sqrt(
+                ((1 - alpha_bar_tm1) / (1 - alpha_bar_t)) * self.betas[t]
+            )
+
+            # Prédiction du bruit et de ℓ_0
+            eps  = self.get_eps_from_model(lt, t)
+            lhat = self.predict_xstart_from_eps(lt, eps, t)
+
+            # Guidance : ‖u_0 − D(ℓ̂_0)‖²
+            xhat = self.vae.decode(lhat).sample
+            loss = torch.sum((u_0 - xhat) ** 2)
+            grad = torch.autograd.grad(loss, lt)[0]
+            zeta = self.guidance_scale / torch.sqrt(loss)
+
+            # Pas DDPM corrigé
+            with torch.no_grad():
                 lt = ((1 / np.sqrt(alpha_t))
-                      * (lt - ((1 - alpha_t) / np.sqrt(1 - alpha_bar_t)) * eps)
-                      + sigma_t * z)
+                    * (lt - ((1 - alpha_t) / np.sqrt(1 - alpha_bar_t)) * eps)
+                    + sigma_t * z
+                    - zeta * grad)
 
-            # Décodage vers l'espace pixel
+        # Décodage vers l'espace pixel
+        with torch.no_grad():
             xt = self.decode(lt)
-            lhat = self.predict_xstart_from_eps(lt, eps, diff_iter[-1])
-            xhat = self.decode(lhat)
 
-            if show_steps:
-                y = y.to(self.device)
-                x_true = x_true.to(self.device)
-                xt = xt.to(self.device)
-                xhat = xhat.to(self.device)
-                pilimg = display_as_pilimg(torch.cat(( y, x_true, xt, xhat), dim=3))
-                
+        if show_steps:
+            y      = y.to(self.device)
+            x_true = x_true.to(self.device)
+            lhat   = self.predict_xstart_from_eps(lt, eps, diff_iter[-1])
+            xhat   = self.decode(lhat)
+            pilimg = display_as_pilimg(torch.cat((y, x_true, xt, xhat), dim=3))
+
         return xt
 
     # ------------------------------------------------------------------ #
