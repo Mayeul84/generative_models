@@ -44,12 +44,13 @@ class Inpainting():
 
         # If mask is a float, then it corresponds to the amount of known pixels for a random mask.
         if isinstance(mask,float):
-            self.mask = self.build_random_mask(imgshape, N=int(imgshape*mask))
+            height, width = imgshape
+            self.mask = self.build_random_mask(imgshape, N=int(height*width*mask))
 
         self.H = self.build_H(mask=self.mask,device=device)
         self.HtH = (self.H).dot(self.H.T)
 
-    def build_random_mask(imgshape, N):
+    def build_random_mask(self,imgshape, N):
         """
         Create a binary matrix representing a subsampling pattern for image inpainting.
 
@@ -60,15 +61,17 @@ class Inpainting():
         Returns:
             torch.Tensor: Binary matrix representing the subsampling pattern.
         """
+
+        height, width = imgshape
+
         # Initialize the mask as a flattened vector of zeros
-        mask = torch.zeros(imgshape, dtype=torch.float32)
+        mask = torch.zeros(height*width, dtype=torch.float32)
         
         # Randomly choose M indices to be observed (set to 1)
         observed_indices = torch.randperm(imgshape)[:N]
         mask[observed_indices] = 1
         
-        # Reshape the mask to a 2D image if necessary
-        height = width = int(np.sqrt(N))  
+        # Reshape the mask to a 2D image if necessary  
         mask = mask.reshape(height, width)
         
         mask = mask.repeat(1, 3, 1, 1)
@@ -91,8 +94,10 @@ class Inpainting():
     
 
     ### MAIN FUNCTION (sampling ~ p(x|z,y))
-    def sample_x_given_z_y(self, z, p2, y_flat, sigma2, HtH, eye_sparse, device="cpu"):
+    def sample_x_given_z_y(self, z, p2, y_flat, sigma2, device="cpu"):
         z_flat = z.flatten()
+
+        HtH = self.HtH
         eye_sparse = sp.eye(HtH.shape[0])
 
         cov = p2 * (eye_sparse - p2 * HtH / (p2 + sigma2))
