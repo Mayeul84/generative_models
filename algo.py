@@ -7,7 +7,7 @@ def inverse_variance_function(noise_level, model):
     closest_t_index = np.argmin(np.abs( (1-model.alphas_cumprod) - noise_level**2))
     return closest_t_index
 
-def PNP_SGS(ro, MCMC_steps, y, Burn_in_steps, operator, show_only_last=False):
+def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False):
     N = 256  
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     y = torch.tensor(y).to(device)  # Observed measurements
@@ -17,7 +17,7 @@ def PNP_SGS(ro, MCMC_steps, y, Burn_in_steps, operator, show_only_last=False):
     noise_level = estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
     x_flatten = x_true.flatten()  
     y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
-    y_flatten = HtH.dot(y_flatten.cpu().numpy())
+    y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
 
     N_burn_in = Burn_in_steps
     x_samples = []
@@ -48,7 +48,7 @@ def PNP_SGS(ro, MCMC_steps, y, Burn_in_steps, operator, show_only_last=False):
             print(f"number of noising steps = {t_star}")
         
         # Step 3 : Sample z via reverse diffusion : equation 7
-        z = ddpm.sampling_spliting_z(t_star, x, x_true, y, n, show_steps=show)
+        z = diffusing_model.sampling_spliting_z(t_star, x, x_true, y, n, show_steps=show)
 
         if n > N_burn_in:
             x_samples.append(z)
