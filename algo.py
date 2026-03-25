@@ -15,12 +15,17 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
     device = operator.device 
 
     y = torch.tensor(y).to(device)  # Observed measurements
-    z = torch.randn(y.shape).to(device)  # initialize z
+    if isinstance(diffusing_model, LDM):
+        with torch.no_grad():
+            l_init = torch.randn(diffusing_model.latent_shape, device=device)
+            z = diffusing_model.decode(l_init)
+    else:
+        z = torch.randn(y.shape, device=device)
     ro = ro
 
-    noise_level = estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+    sigma_noise = estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
     x_flatten = x_true.flatten()  
-    y_flatten = x_flatten + noise_level * torch.randn_like(x_flatten)
+    y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
     y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
 
     N_burn_in = Burn_in_steps
@@ -37,7 +42,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             print(f"---------------- Iteration {n} ------------")
         
         # Step 1: sample from x given z and y  : equation 6
-        x = operator.sample_x_given_z_y(z, ro**2, y_flatten, noise_level**2).float()
+        x = operator.sample_x_given_z_y(z, ro**2, y_flatten, sigma_noise**2).float()
 
         # Step 2: estimating noise level
         if isinstance(diffusing_model, LDM):
