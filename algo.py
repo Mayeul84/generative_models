@@ -44,14 +44,16 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         # Step 1: sample from x given z and y  : equation 6
         x = operator.sample_x_given_z_y(z, ro**2, y_flatten, sigma_noise**2).float()
 
-        # Step 2: estimating noise level
-        if isinstance(diffusing_model, LDM):
-            noise_level = diffusing_model.estimate_sigma_latent(x)
-        else:
-            noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
-        
+        # # Step 2: estimating noise level
+        # if isinstance(diffusing_model, LDM):
+        #     noise_level = diffusing_model.estimate_sigma_latent(x)
+        # else:
+        #     noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+        noise_level=None
+        # L'article suppose que sigma= rho c'est tout l'enjeu
+
         # Step 3: find t
-        t_star = inverse_variance_function(noise_level,model=diffusing_model)
+        t_star = inverse_variance_function(ro,model=diffusing_model)
         time.append(t_star)
 
         if show:
