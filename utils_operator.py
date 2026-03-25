@@ -110,4 +110,5 @@ class Inpainting():
         return sample_from_sparse_gaussian(moy, cov).view(z.shape).to(self.device)
     
     def linear_operator(self,x):
+        x = x.to(self.device)
         return x*self.mask
