@@ -63,12 +63,13 @@ class Inpainting():
         """
 
         height, width = imgshape
+        vol = height*width
 
         # Initialize the mask as a flattened vector of zeros
-        mask = torch.zeros(height*width, dtype=torch.float32)
+        mask = torch.zeros(vol, dtype=torch.float32)
         
         # Randomly choose M indices to be observed (set to 1)
-        observed_indices = torch.randperm(imgshape)[:N]
+        observed_indices = torch.randperm(vol)[:N]
         mask[observed_indices] = 1
         
         # Reshape the mask to a 2D image if necessary  

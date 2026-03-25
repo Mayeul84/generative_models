@@ -34,7 +34,7 @@ def PNP_SGS(ro, MCMC_steps, y, Burn_in_steps, operator, show_only_last=False):
             print(f"---------------- Iteration {n} ------------")
         
         # Step 1: sample from x given z and y  : equation 6
-        x = operator.sample_x_given_z_y(z, ro**2, y_flatten, sigma_noise**2, device=device).float()
+        x = operator.sample_x_given_z_y(z, ro**2, y_flatten, noise_level**2, device=device).float()
 
         # Step 2: estimating noise level
         noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
