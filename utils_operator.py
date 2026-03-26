@@ -46,8 +46,12 @@ class Inpainting():
         # If mask is a float, then it corresponds to the amount of known pixels for a random mask.
         if isinstance(mask,float):
             height, width = imgshape
-            self.mask = self.build_random_mask(imgshape, N=int(height*width*mask))
+            mask = self.build_random_mask(imgshape, N=int(height*width*mask))
 
+        self.set_mask(mask=mask)
+    
+    def set_mask(self,mask):
+        self.mask = mask
         self.H = self.build_H(mask=self.mask)
         self.HtH = (self.H).dot(self.H.T)
 
