@@ -64,7 +64,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         # Step 3: find t
         if isinstance(diffusing_model,LDM):
             with torch.no_grad():
-                z_noisy = diffusing_model.encode(x).latent_dist.sample()
+                z_noisy = diffusing_model.encode(x)
 
             epsilon = torch.randn_like(z_noisy) * 1e-3
             x_perturbed = diffusing_model.decode(z_noisy + epsilon)
@@ -81,7 +81,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
         else:
             t_star = inverse_variance_function(ro,model=diffusing_model)
-            
+
         time.append(t_star)
 
         if show:
