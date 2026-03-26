@@ -66,7 +66,8 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             with torch.no_grad():
                 z_noisy = diffusing_model.encode(x)
 
-            epsilon = torch.randn_like(z_noisy) * 1e-2
+            eps_scale = 0.01 * torch.std(z_noisy).item()
+            epsilon = torch.randn_like(z_noisy) * eps_scale
             x_perturbed = diffusing_model.decode(z_noisy + epsilon)
             x_original = diffusing_model.decode(z_noisy)
 
