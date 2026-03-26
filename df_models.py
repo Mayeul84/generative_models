@@ -127,6 +127,7 @@ class LDM:
         self.to(device)
 
         self.scheduler = pipe.scheduler
+        self.scheduler.set_timesteps(num_diffusion_timesteps)
         self.vae.eval()
         self.unet.eval()
 
