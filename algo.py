@@ -94,6 +94,11 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         # Step 3 : Sample z via reverse diffusion : equation 7
         z = diffusing_model.sampling_splitting_z(t_star, x, x_true, y, n, show_steps=show)
 
+        if isinstance(diffusing_model,LDM) and show:
+            mse = torch.mean((z - x)**2)
+            rmse = torch.sqrt(mse)
+            print(f"Observed noise level: {rmse}")
+            
         if n > N_burn_in:
             x_samples.append(z)
 
