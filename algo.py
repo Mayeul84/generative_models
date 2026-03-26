@@ -12,7 +12,11 @@ import numpy as np
 from df_models import LDM
 
 def inverse_variance_function(noise_level, model):
-    closest_t_index = np.argmin(np.abs( (1-model.alphas_cumprod) - noise_level**2))
+    if isinstance(model, LDM):
+        alphas_cumprod = model.scheduler.alphas_cumprod.numpy()
+    else:
+        alphas_cumprod = model.alphas_cumprod
+    closest_t_index = np.argmin(np.abs((1 - alphas_cumprod) - noise_level**2))
     return closest_t_index
 
 def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False):
