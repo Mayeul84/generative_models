@@ -76,7 +76,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
             # Norme moyenne pour approx le jacobien
             factor_j = torch.sqrt(torch.mean(dx**2) / torch.mean(dz**2))
-            sigma_latent = ro / factor_j
+            sigma_latent = (ro / factor_j).item()
             t_star = inverse_variance_function(sigma_latent,model=diffusing_model)
 
         else:
