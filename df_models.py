@@ -269,12 +269,57 @@ class LDM:
 
     #     return xt
 
+    # def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
+    #     """
+    #     Débruitage stochastique dans l'espace latent.
+    #     u_0 : image pixel (1,3,H,W) – observation bruitée courante x^(n)
+    #     Retourne une image pixel débruitée.
+    #     """
+    #     u_0 = u_0.to(self.device)
+
+    #     with torch.no_grad():
+    #         lt = self.encode(u_0)
+
+    #         if iteration < 20:
+    #             t_end = self.num_diffusion_timesteps - (t_start // 2)
+    #         else:
+    #             t_end = self.num_diffusion_timesteps
+
+    #         diff_iter = self.reversed_time_steps[
+    #             self.num_diffusion_timesteps - t_start : t_end
+    #         ]
+
+    #         if len(diff_iter) == 0:
+    #             return self.decode(lt)
+
+    #         eps = None
+    #         for t in diff_iter:
+    #             z = torch.randn_like(lt) if t > 1 else torch.zeros_like(lt)
+
+    #             alpha_t       = self.alphas[t]
+    #             alpha_bar_t   = self.alphas_cumprod[t]
+    #             alpha_bar_tm1 = self.alphas_cumprod[t - 1] if t > 0 else 1.0
+    #             sigma_t = np.sqrt(
+    #                 ((1 - alpha_bar_tm1) / (1 - alpha_bar_t)) * self.betas[t]
+    #             )
+
+    #             eps = self.get_eps_from_model(lt, t)
+    #             lt = ((1 / np.sqrt(alpha_t))
+    #                 * (lt - ((1 - alpha_t) / np.sqrt(1 - alpha_bar_t)) * eps)
+    #                 + sigma_t * z)
+
+    #         xt = self.decode(lt)
+
+    #         if show_steps:
+    #             y      = y.to(self.device)
+    #             x_true = x_true.to(self.device)
+    #             lhat   = self.predict_xstart_from_eps(lt, eps, diff_iter[-1])
+    #             xhat   = self.decode(lhat)
+    #             pilimg = display_as_pilimg(torch.cat((y, x_true, xt, xhat), dim=3))
+
+    #     return xt
+
     def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
-        """
-        Débruitage stochastique dans l'espace latent.
-        u_0 : image pixel (1,3,H,W) – observation bruitée courante x^(n)
-        Retourne une image pixel débruitée.
-        """
         u_0 = u_0.to(self.device)
 
         with torch.no_grad():
@@ -292,30 +337,18 @@ class LDM:
             if len(diff_iter) == 0:
                 return self.decode(lt)
 
-            eps = None
             for t in diff_iter:
-                z = torch.randn_like(lt) if t > 1 else torch.zeros_like(lt)
-
-                alpha_t       = self.alphas[t]
-                alpha_bar_t   = self.alphas_cumprod[t]
-                alpha_bar_tm1 = self.alphas_cumprod[t - 1] if t > 0 else 1.0
-                sigma_t = np.sqrt(
-                    ((1 - alpha_bar_tm1) / (1 - alpha_bar_t)) * self.betas[t]
-                )
-
-                eps = self.get_eps_from_model(lt, t)
-                lt = ((1 / np.sqrt(alpha_t))
-                    * (lt - ((1 - alpha_t) / np.sqrt(1 - alpha_bar_t)) * eps)
-                    + sigma_t * z)
+                t_tensor = torch.tensor([t], device=self.device)
+                eps = self.unet(lt, t_tensor).sample
+                # Utiliser le scheduler du pipeline au lieu de tes alphas
+                lt = self.scheduler.step(eps, t, lt).prev_sample
 
             xt = self.decode(lt)
 
             if show_steps:
-                y      = y.to(self.device)
+                y = y.to(self.device)
                 x_true = x_true.to(self.device)
-                lhat   = self.predict_xstart_from_eps(lt, eps, diff_iter[-1])
-                xhat   = self.decode(lhat)
-                pilimg = display_as_pilimg(torch.cat((y, x_true, xt, xhat), dim=3))
+                pilimg = display_as_pilimg(torch.cat((y, x_true, xt, xt), dim=3))
 
         return xt
 
