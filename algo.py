@@ -62,7 +62,26 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         # L'article suppose que sigma= rho c'est tout l'enjeu
 
         # Step 3: find t
-        t_star = inverse_variance_function(ro,model=diffusing_model)
+        if isinstance(diffusing_model,LDM):
+            with torch.no_grad():
+                z_noisy = diffusing_model.encode(x).latent_dist.sample()
+
+            epsilon = torch.randn_like(z_noisy) * 1e-3
+            x_perturbed = diffusing_model.decode(z_noisy + epsilon)
+            x_original = diffusing_model.decode(z_noisy)
+
+            # Différence dans l'image
+            dx = x_perturbed - x_original
+            dz = epsilon
+
+            # Norme moyenne pour approx le jacobien
+            factor_j = torch.sqrt(torch.mean(dx**2) / torch.mean(dz**2))
+            sigma_latent = ro / factor_j
+            t_star = inverse_variance_function(sigma_latent,model=diffusing_model)
+
+        else:
+            t_star = inverse_variance_function(ro,model=diffusing_model)
+            
         time.append(t_star)
 
         if show:

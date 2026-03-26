@@ -57,7 +57,6 @@ class DDPM:
 
                 xt = (1 / np.sqrt(alpha_t)) * (xt -  ((1 - alpha_t) / np.sqrt(1 - alpha_bar_t)) * eps ) + sigma_t * z
                 xhat = self.predict_xstart_from_eps(xt, eps, t)
-
                 
             if show_steps :
                     y = y.to(self.device)
