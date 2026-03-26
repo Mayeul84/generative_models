@@ -1,3 +1,8 @@
+# Je viens de modifier sigma_estimate, maintenant on prend directement ro comme sigma (c'est littéralement le but de l'article)
+# Voir si ça marche encore sur le cas de base. Puis voir si ça marche sur le latent (Normalement c'est plus simple car on a plus
+# à estimer ro)
+
+
 import torch
 from skimage.restoration import estimate_sigma
 from diffusers import LDMPipeline
