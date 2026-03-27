@@ -29,7 +29,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             l_init = torch.randn(diffusing_model.latent_shape, device=device)
             z = diffusing_model.decode(l_init)
     else:
-        z = torch.randn(y.shape, device=device)
+        z = torch.randn(x_true.shape, device=device)
     ro = ro
 
     sigma_noise = 0.01#estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)

@@ -92,7 +92,7 @@ class Inpainting():
 
         height,width = imgshape
 
-        mask = torch.ones((1, height, width), dtype=torch.float32, device=self.device)
+        mask = torch.ones((1, 3, height, width), dtype=torch.float32, device=self.device)
     
         if center is None:
             center_y, center_x = height // 2, width // 2
@@ -105,7 +105,7 @@ class Inpainting():
         x1 = max(center_x - half_size, 0)
         x2 = min(center_x + half_size, width)
 
-        mask[:, y1:y2, x1:x2] = 0.0
+        mask[:, :, y1:y2, x1:x2] = 0.0
 
         return mask
 
