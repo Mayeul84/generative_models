@@ -32,7 +32,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         z = torch.randn(y.shape, device=device)
     ro = ro
 
-    sigma_noise = estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+    sigma_noise = 0.01#estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
     x_flatten = x_true.flatten()  
     y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
     y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
@@ -51,6 +51,8 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             print(f"---------------- Iteration {n} ------------")
         
         # Step 1: sample from x given z and y  : equation 6
+
+        ### L'erreur est peut être ici sur le sigma_noise ? Sur la fonction sampling ?
         x = operator.sample_x_given_z_y(z, ro**2, y_flatten, sigma_noise**2).float()
 
         # # Step 2: estimating noise level

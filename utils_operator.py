@@ -47,7 +47,7 @@ class Inpainting():
         if isinstance(mask,float):
             height, width = imgshape
             mask = self.build_random_mask(imgshape, N=int(height*width*mask))
-            
+
         if isinstance(mask,tuple):
             center, square_size = mask
             mask = self.build_square_mask(imgshape=imgshape,square_size=square_size,center=center)
@@ -127,10 +127,9 @@ class Inpainting():
     def sample_x_given_z_y(self, z, p2, y_flat, sigma2):
         z_flat = z.flatten()
 
-        HtH = self.HtH
-        eye_sparse = sp.eye(HtH.shape[0])
+        eye_sparse = sp.eye(self.HtH.shape[0])
 
-        cov = p2 * (eye_sparse - p2 * HtH / (p2 + sigma2))
+        cov = p2 * (eye_sparse - p2 * self.HtH / (p2 + sigma2))
         A = y_flat / sigma2 
         B = z_flat / p2
         summ = sum_chunk(A, B).cpu()
