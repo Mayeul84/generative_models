@@ -5,7 +5,7 @@ import tqdm
 from utils import *
 
 class DDPM:
-  def __init__(self, model, num_diffusion_timesteps=1000, beta_start=0.0001, beta_end=0.002, imgshape=(1,3,256,256), device="cpu"):
+  def __init__(self, model, num_diffusion_timesteps=1000, beta_start=0.0001, beta_end=0.02, imgshape=(1,3,256,256), device="cpu"):
     self.num_diffusion_timesteps = num_diffusion_timesteps
     self.reversed_time_steps = np.arange(self.num_diffusion_timesteps)[::-1]
     self.betas = np.linspace(beta_start, beta_end, self.num_diffusion_timesteps,
