@@ -130,7 +130,7 @@ class Inpainting():
         eye_sparse = sp.eye(self.HtH.shape[0])
 
         cov = p2 * (eye_sparse - p2 * self.HtH / (p2 + sigma2))
-        A = self.H.T @ y_flat / sigma2 
+        A = y_flat / sigma2 
         B = z_flat / p2
         summ = sum_chunk(A, B).cpu()
         moy = cov.dot(summ)
