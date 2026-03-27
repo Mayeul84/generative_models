@@ -43,7 +43,8 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
     show = not show_only_last
 
-    for n in tqdm(range(MCMC_steps)):  # MCMC
+    pbar = tqdm(range(MCMC_steps))
+    for n in pbar:  # MCMC
         if n == MCMC_steps - 1:
             show = True
 
@@ -105,19 +106,21 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
                 t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
                 
-                ro_min = 0.04
-                if ro < ro_min:
-                    if (sigma_estimated**2 - ro_min**2) <= 0:
-                        print("Warning: negative variance diff")
-                    t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - ro_min**2)),model=diffusing_model)
-                else:
-                    if (sigma_estimated**2 - ro**2) <= 0:
-                        print("Warning: negative variance diff")
+                # if (sigma_estimated**2 - ro**2) <= 0:
+                #     print("Warning: negative variance diff")
 
+                if sigma_estimated <= ro:
+                    t_end = 0
+                else:
                     t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - ro**2)),model=diffusing_model)
 
                 if show:
                     print(f"\nt_star: {t_star} and t_end: {t_end}.   ")
+
+
+            pbar.set_postfix(t_star=t_star,t_end=t_end,deltat=t_star-t_end)
+            if t_end == t_star:
+                t_end -= 1
 
             if show:
                 #print(f"noise level estimated = {noise_level}")
