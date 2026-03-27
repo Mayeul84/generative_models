@@ -85,7 +85,9 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 print(f"noise level estimated = {sigma_latent}")
                 print(f"number of noising steps = {t_star}")
         else:
-            t_star = inverse_variance_function(ro,model=diffusing_model)
+            sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+            t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
+            #t_star = inverse_variance_function(ro,model=diffusing_model)
             if show:
                 #print(f"noise level estimated = {noise_level}")
                 print(f"number of noising steps = {t_star}")
@@ -94,7 +96,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
         
         # Step 3 : Sample z via reverse diffusion : equation 7
-        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show)
+        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten), show_steps=show)
 
         if isinstance(diffusing_model,LDM) and show:
             mse = torch.mean((z - x)**2)
