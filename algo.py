@@ -107,9 +107,14 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 
                 ro_min = 0.04
                 if ro < ro_min:
-                    t_end = inverse_variance_function(np.sqrt(sigma_estimated**2 - ro_min**2),model=diffusing_model)
+                    if (sigma_estimated**2 - ro_min**2) <= 0:
+                        print("Warning: negative variance diff")
+                    t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - ro_min**2)),model=diffusing_model)
                 else:
-                    t_end = inverse_variance_function(np.sqrt(sigma_estimated**2 - ro**2),model=diffusing_model)
+                    if (sigma_estimated**2 - ro**2) <= 0:
+                        print("Warning: negative variance diff")
+
+                    t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - ro**2)),model=diffusing_model)
 
                 if show:
                     print(f"\nt_star: {t_star} and t_end: {t_end}.   ")
