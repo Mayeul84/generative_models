@@ -109,8 +109,9 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 if ro < ro_min:
                     t_end = inverse_variance_function(ro_min,model=diffusing_model)
                 else:
-                    t_end = inverse_variance_function(ro_min,model=diffusing_model)
+                    t_end = inverse_variance_function(ro,model=diffusing_model)
 
+                print(f"t_star: {t_star} and t_end: {t_end}")
 
             if show:
                 #print(f"noise level estimated = {noise_level}")
