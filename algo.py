@@ -120,7 +120,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
             pbar.set_postfix(t_star=t_star,t_end=t_end,deltat=t_star-t_end)
             if t_end == t_star:
-                t_end -= 1
+                t_end -= 2
 
             if show:
                 #print(f"noise level estimated = {noise_level}")
