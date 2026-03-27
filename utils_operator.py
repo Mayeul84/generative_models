@@ -47,6 +47,10 @@ class Inpainting():
         if isinstance(mask,float):
             height, width = imgshape
             mask = self.build_random_mask(imgshape, N=int(height*width*mask))
+            
+        if isinstance(mask,tuple):
+            center, square_size = mask
+            mask = self.build_square_mask(imgshape=imgshape,square_size=square_size,center=center)
 
         self.set_mask(mask=mask)
     
@@ -81,6 +85,27 @@ class Inpainting():
         mask = mask.reshape(height, width)
         
         mask = mask.repeat(1, 3, 1, 1)
+
+        return mask
+    
+    def build_square_mask(self,imgshape, square_size, center=None):
+
+        height,width = imgshape
+
+        mask = torch.ones((1, height, width), dtype=torch.float32, device=self.device)
+    
+        if center is None:
+            center_y, center_x = height // 2, width // 2
+        else:
+            center_y, center_x = center
+
+        half_size = square_size // 2
+        y1 = max(center_y - half_size, 0)
+        y2 = min(center_y + half_size, height)
+        x1 = max(center_x - half_size, 0)
+        x2 = min(center_x + half_size, width)
+
+        mask[:, y1:y2, x1:x2] = 0.0
 
         return mask
 
