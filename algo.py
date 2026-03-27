@@ -85,9 +85,18 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 print(f"noise level estimated = {sigma_latent}")
                 print(f"number of noising steps = {t_star}")
         else:
-            sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
-            t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
-            #t_star = inverse_variance_function(ro,model=diffusing_model)
+            # méthode incorrecte:
+            #sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+            #t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
+            
+            # méthode correcte:
+            ro_min = 0.04
+            if ro < ro_min:
+                t_star = inverse_variance_function(ro_min,model=diffusing_model)
+            else:
+                t_star = inverse_variance_function(ro_min,model=diffusing_model)
+
+                
             if show:
                 #print(f"noise level estimated = {noise_level}")
                 print(f"number of noising steps = {t_star}")
