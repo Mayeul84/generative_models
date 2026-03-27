@@ -32,15 +32,17 @@ class DDPM:
     x_start = x_start.clamp(-1.,1.)
     return(x_start)
 
-  def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
+  def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps, t_end=None):
         with torch.no_grad():  # mode eval
             xt = u_0 
             xhat = torch.randn(self.imgshape, device=self.device)
             # t_start = min(t_start, 100)
-            if iteration < 20 : 
-                t_end = self.num_diffusion_timesteps - (t_start //2)
-            else : 
-                t_end = self.num_diffusion_timesteps
+
+            if t_end is None:
+                if iteration < 20 : 
+                    t_end = self.num_diffusion_timesteps - (t_start //2)
+                else : 
+                    t_end = self.num_diffusion_timesteps
 
             diff_iter = self.reversed_time_steps[self.num_diffusion_timesteps - t_start:t_end]
 
