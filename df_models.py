@@ -122,11 +122,11 @@ class DDPM:
 
       if show_steps and (t)%100==0:
         print('Iteration :', t)
-        y = y.to(self.device)
+        vis_y = vis_y.to(self.device)
         x_true = x_true.to(self.device)
         x = x.to(self.device)
         xhat = xhat.to(self.device)
-        pilimg = display_as_pilimg(torch.cat(( y, x_true, x, xhat), dim=3))
+        pilimg = display_as_pilimg(torch.cat((vis_y, x_true, x, xhat), dim=3))
 
     return(x)
   
