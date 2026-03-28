@@ -101,13 +101,13 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             elif method_t_star == "estimated+ro":
 
                 #sigma_estimated = estimate_sigma(x_original[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
-                sigma_latent_estimated = estimate_sigma(z_noisy[0].cpu().numpy(),channel_axis=0,average_sigmas=True)#sigma_estimated / factor_j
+                sigma_estimated = estimate_sigma(z_noisy[0].cpu().numpy(),channel_axis=0,average_sigmas=True)#sigma_estimated / factor_j
                 t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
 
-                if sigma_estimated <= ro:
+                if sigma_estimated <= (ro / factor_j):
                     t_end = 0
                 else:
-                    sigma_latent_estimated_end = np.sqrt(sigma_estimated**2-ro**2) / factor_j
+                    sigma_latent_estimated_end = np.sqrt(sigma_estimated**2 - (ro / factor_j)**2)
                     t_end = inverse_variance_function(sigma_latent_estimated_end,model=diffusing_model)
 
                 if show:
