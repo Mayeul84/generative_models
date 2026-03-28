@@ -287,8 +287,7 @@ class LDM:
         self.betas               = 1.0 - self.alphas
         self.sigma               = np.sqrt(1 - self.alphas_cumprod_prev)
 
-        # On met à jour le scheduler avec la nouvelle grille interpolée
-        self.scheduler.set_timesteps(num_diffusion_timesteps)
+        self.scheduler.set_timesteps(base_timesteps)
 
         # Shape latente
         b, c, h, w = imgshape
