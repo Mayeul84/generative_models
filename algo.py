@@ -1,8 +1,3 @@
-# Je viens de modifier sigma_estimate, maintenant on prend directement ro comme sigma (c'est littéralement le but de l'article)
-# Voir si ça marche encore sur le cas de base. Puis voir si ça marche sur le latent (Normalement c'est plus simple car on a plus
-# à estimer ro)
-
-
 import torch
 from skimage.restoration import estimate_sigma
 from diffusers import LDMPipeline
@@ -16,20 +11,20 @@ def inverse_variance_function(noise_level, model):
     closest_t_index = np.argmin(np.abs((1 - alphas_cumprod) - noise_level**2))
     return closest_t_index
 
-def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False, method_t_star="ro"):
+def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False, method_t_star="rho"):
     assert operator.device == diffusing_model.device
     device = operator.device 
 
-    y = torch.tensor(y).to(device)  # Observed measurements
+    y = torch.tensor(y).to(device) 
     if isinstance(diffusing_model, LDM):
         with torch.no_grad():
             l_init = torch.randn(diffusing_model.latent_shape, device=device)
             z = diffusing_model.decode(l_init)
     else:
         z = torch.randn(x_true.shape, device=device)
-    ro = ro
+    rho = rho
 
-    sigma_noise = 0.01#estimate_sigma(y[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+    sigma_noise = 0.01
     x_flatten = x_true.flatten()  
     y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
     y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
@@ -48,20 +43,9 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
         if show:
             print(f"---------------- Iteration {n} ------------")
         
-        # Step 1: sample from x given z and y  : equation 6
+        # sample from x given z and y  : equation 6
+        x = operator.sample_x_given_z_y(z, rho**2, y_flatten, sigma_noise**2).float()
 
-        ### L'erreur est peut être ici sur le sigma_noise ? Sur la fonction sampling ?
-        x = operator.sample_x_given_z_y(z, ro**2, y_flatten, sigma_noise**2).float()
-
-        # # Step 2: estimating noise level
-        # if isinstance(diffusing_model, LDM):
-        #     noise_level = diffusing_model.estimate_sigma_latent(x)
-        # else:
-        #     noise_level = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
-        noise_level=None
-        # L'article suppose que sigma= rho c'est tout l'enjeu
-
-        # Step 3: find t
         if isinstance(diffusing_model,LDM):
             with torch.no_grad():
                 z_noisy = diffusing_model.encode(x)
@@ -71,41 +55,41 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             x_perturbed = diffusing_model.decode(z_noisy + epsilon)
             x_original = diffusing_model.decode(z_noisy)
 
-            # Différence dans l'image
             dx = x_perturbed - x_original
             dz = epsilon
 
-            # Norme moyenne pour approx le jacobien
+            # jacobian
             factor_j = torch.sqrt(torch.mean(dx**2) / torch.mean(dz**2)).item()
-            # méthode incorrecte:
+
+            # method from article:
             if method_t_star == "estimated":
                 sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
                 sigma_latent_estimated = sigma_estimated / factor_j
                 t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
                 t_end = None
-            # méthode correcte:
-            elif method_t_star == "ro":
-                ro_min = 0.04
-                if ro < ro_min:
-                    sigma_estimated_latent = ro_min/factor_j
+                
+            # method from rho:
+            elif method_t_star == "rho":
+                rho_min = 0.04
+                if rho < rho_min:
+                    sigma_estimated_latent = rho_min/factor_j
                     t_star = inverse_variance_function(sigma_estimated_latent,model=diffusing_model)
                 else:
-                    sigma_estimated_latent = ro/factor_j
+                    sigma_estimated_latent = rho/factor_j
                     t_star = inverse_variance_function(sigma_estimated_latent,model=diffusing_model)
 
                 t_end = None
                 
-            # méthode brillante:
-            elif method_t_star == "estimated+ro":
+            # our method:
+            elif method_t_star == "estimated+rho":
 
-                #sigma_estimated = estimate_sigma(x_original[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
                 sigma_latent_estimated = estimate_sigma(z_noisy[0].cpu().numpy(),channel_axis=0,average_sigmas=True)#sigma_estimated / factor_j
                 t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
 
-                if sigma_latent_estimated <= (ro / factor_j):
+                if sigma_latent_estimated <= (rho / factor_j):
                     t_end = 0
                 else:
-                    sigma_latent_estimated_end = np.sqrt(sigma_latent_estimated**2 - (ro / factor_j)**2)
+                    sigma_latent_estimated_end = np.sqrt(sigma_latent_estimated**2 - (rho / factor_j)**2)
                     t_end = inverse_variance_function(sigma_latent_estimated_end,model=diffusing_model)
 
                 if show:
@@ -121,46 +105,45 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 t_end = t_end - 2 if t_end>=2 else 0
             
             if show:
-                #print(f"noise level estimated = {noise_level}")
                 print(f"number of noising steps = {deltat}")
 
         else:
-            # méthode incorrecte:
+
+            # method from article
             if method_t_star == "estimated":
                 sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
                 t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
                 t_end = None
-            # méthode correcte:
-            elif method_t_star == "ro":
-                ro_min = 0.04
-                if ro < ro_min:
-                    t_star = inverse_variance_function(ro_min,model=diffusing_model)
+
+            # method from rho:
+            elif method_t_star == "rho":
+                rho_min = 0.04
+                if rho < rho_min:
+                    t_star = inverse_variance_function(rho_min,model=diffusing_model)
                 else:
-                    t_star = inverse_variance_function(ro_min,model=diffusing_model)
+                    t_star = inverse_variance_function(rho_min,model=diffusing_model)
 
                 t_end = None
 
-            elif method_t_star == "ro_chen":
-                ro_min = 0.04
-                if ro < ro_min:
-                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+ro_min**2)),model=diffusing_model)
+            # method from another article
+            elif method_t_star == "rho_chen":
+                rho_min = 0.04
+                if rho < rho_min:
+                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+rho_min**2)),model=diffusing_model)
                 else:
-                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+ro**2)),model=diffusing_model)
+                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+rho**2)),model=diffusing_model)
 
                 t_end = None
 
-            # méthode brillante:
-            elif method_t_star == "estimated+ro":
+            # method from our group
+            elif method_t_star == "estimated+rho":
                 sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
                 t_star = inverse_variance_function(sigma_estimated,model=diffusing_model)
                 
-                # if (sigma_estimated**2 - ro**2) <= 0:
-                #     print("Warning: negative variance diff")
-
-                if sigma_estimated <= ro:
+                if sigma_estimated <= rho:
                     t_end = 0
                 else:
-                    t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - ro**2)),model=diffusing_model)
+                    t_end = inverse_variance_function(np.sqrt(abs(sigma_estimated**2 - rho**2)),model=diffusing_model)
 
                 if show:
                     print(f"\nt_star: {t_star} and t_end: {t_end}.   ")
@@ -175,13 +158,12 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 t_end = t_end - 2 if t_end>=2 else 0
 
             if show:
-                #print(f"noise level estimated = {noise_level}")
                 print(f"number of noising steps = {deltat}")
 
         time.append(t_star)
 
-        
-        # Step 3 : Sample z via reverse diffusion : equation 7
+
+        # sample z via reverse diffusion : equation 7
         z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show, t_end=t_end, N_burn_in=Burn_in_steps)
 
         if isinstance(diffusing_model,LDM) and show:
