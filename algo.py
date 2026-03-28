@@ -128,7 +128,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
             if show:
                 #print(f"noise level estimated = {noise_level}")
-                print(f"number of noising steps = {t_star}")
+                print(f"number of noising steps = {deltat}")
 
         time.append(t_star)
 
