@@ -79,12 +79,53 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             dz = epsilon
 
             # Norme moyenne pour approx le jacobien
-            factor_j = torch.sqrt(torch.mean(dx**2) / torch.mean(dz**2))
-            sigma_latent = (ro / factor_j).item()
-            t_star = inverse_variance_function(sigma_latent,model=diffusing_model)
+            factor_j = torch.sqrt(torch.mean(dx**2) / torch.mean(dz**2)).item()
+            # méthode incorrecte:
+            if method_t_star == "estimated":
+                sigma_estimated = estimate_sigma(x[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+                sigma_latent_estimated = sigma_estimated / factor_j
+                t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
+                t_end = None
+            # méthode correcte:
+            elif method_t_star == "ro":
+                ro_min = 0.04
+                if ro < ro_min:
+                    sigma_estimated_latent = ro_min/factor_j
+                    t_star = inverse_variance_function(sigma_estimated_latent,model=diffusing_model)
+                else:
+                    sigma_estimated_latent = ro/factor_j
+                    t_star = inverse_variance_function(sigma_estimated_latent,model=diffusing_model)
+
+                t_end = None
+            # méthode brillante:
+            elif method_t_star == "estimated+ro":
+
+                sigma_estimated = estimate_sigma(x_original[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+                sigma_latent_estimated = sigma_estimated / factor_j
+                t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
+
+                if sigma_estimated <= ro:
+                    t_end = 0
+                else:
+                    sigma_latent_estimated_end = torch.sqrt(sigma_estimated**2-ro**2) / factor_j
+                    t_end = inverse_variance_function(sigma_latent_estimated_end,model=diffusing_model)
+
+                if show:
+                    print(f"\nt_star: {t_star} and t_end: {t_end}.   ")
+
+            if t_end is None:
+                deltat = t_star
+            else:
+                deltat = t_star - t_end
+                
+            pbar.set_postfix(t_star=t_star,t_end=t_end,deltat=deltat)
+            if t_end == t_star:
+                t_end = t_end - 2 if t_end>=2 else 0
+            
             if show:
-                print(f"noise level estimated = {sigma_latent}")
-                print(f"number of noising steps = {t_star}")
+                #print(f"noise level estimated = {noise_level}")
+                print(f"number of noising steps = {deltat}")
+                
         else:
             # méthode incorrecte:
             if method_t_star == "estimated":
