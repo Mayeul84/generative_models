@@ -43,7 +43,6 @@ class Inpainting():
     def __init__(self,mask=0.5, imgshape=None, device="cpu"):
 
         self.device = device
-        # If mask is a float, then it corresponds to the amount of known pixels for a random mask.
         if isinstance(mask,float):
             height, width = imgshape
             mask = self.build_random_mask(imgshape, N=int(height*width*mask))
@@ -74,14 +73,11 @@ class Inpainting():
         height, width = imgshape
         vol = height*width
 
-        # Initialize the mask as a flattened vector of zeros
         mask = torch.zeros(vol, dtype=torch.float32, device=self.device)
         
-        # Randomly choose M indices to be observed (set to 1)
         observed_indices = torch.randperm(vol)[:N]
         mask[observed_indices] = 1
         
-        # Reshape the mask to a 2D image if necessary  
         mask = mask.reshape(height, width)
         
         mask = mask.repeat(1, 3, 1, 1)
@@ -110,15 +106,12 @@ class Inpainting():
         return mask
 
     def build_H(self,mask):
-        # Get indices of non-zero elements from the mask matrix
         nonzero_indices = torch.nonzero(mask.flatten(), as_tuple=False)[:, 0].to(self.device)
 
-        # Define the number of measurements 
         M = len(nonzero_indices)
         nonzero_indices = torch.stack([nonzero_indices, torch.arange(0, M, device=self.device)]).cpu()
 
-        # Create a sparse tensor from the non-zero indices
-        values = np.ones(M)  # All elements are ones for binary matrix
+        values = np.ones(M)
         H = sp.coo_matrix((values, (nonzero_indices[0], nonzero_indices[1])), shape=(len(mask.flatten()), M)).tocsc()
 
         return H
@@ -163,7 +156,6 @@ class Deblurring():
         self.Hc_fft  = self.H_fft.conj()
         self.HtH_fft = (self.H_fft * self.Hc_fft).real
 
-        # Pour compatibilité avec algo.py qui fait operator.HtH.dot(vecteur_numpy)
         self.HtH = self
 
     def dot(self, x_numpy):
@@ -221,13 +213,12 @@ class SuperResolution():
         H, W = imgshape
         self.lr_shape = (H // scale_factor, W // scale_factor)
 
-        # Pour compatibilité avec algo.py qui fait operator.HtH.dot(vecteur_numpy)
         self.HtH = self
 
     def dot(self, x_numpy):
         H, W = self.imgshape
         x = torch.tensor(x_numpy).reshape(1, 3, H, W).float().to(self.device)
-        # HtH = H^T H = upscale(downscale(x)) via avg_pool + upsample
+
         result = self._HtH(x)
         return result.flatten().cpu().numpy()
 
@@ -251,16 +242,10 @@ class SuperResolution():
     def sample_x_given_z_y(self, z, p2, y_flat, sigma2):
         z = z.to(self.device)
 
-        # Reconstruire y en haute résolution
         if not isinstance(y_flat, torch.Tensor):
             y_flat = torch.tensor(y_flat)
         y_flat = y_flat.reshape(1, 3, *self.imgshape).float().to(self.device)
 
-        # Posterior : mean = (1/p2 * I + 1/sigma2 * HtH)^{-1} * (z/p2 + H^T y / sigma2)
-        # On résout dans l'espace image via Fourier (HtH est diagonal en Fourier pour avg_pool)
-        # Approximation : on utilise la formule de Woodbury
-        # Sigma_post = p2 * I - p2^2 / (sigma2 + p2) * HtH  (car HtH est une projection : HtH^2 = HtH)
-        
         s2 = torch.tensor(sigma2, dtype=torch.float32)
         p2t = torch.tensor(p2, dtype=torch.float32)
 
@@ -271,25 +256,21 @@ class SuperResolution():
             # y_flat est déjà en LR ou HR ?
         ) if y_flat.shape[-2:] != self.imgshape else y_flat
 
-        # Si y_flat est en HR (upsampled depuis algo.py via HtH.dot)
-        # H^T y_lr = upsample(y_lr) / scale_factor^2
-        # On recalcule proprement depuis y_flat HR
         y_lr = self._downsample(y_flat)
         Ht_y = self._upsample(y_lr) / (self.scale_factor ** 2)
 
         mu = (z / p2t + Ht_y / s2) 
 
-        # Covariance : pixel dans le support de H → variance sigma2*p2/(sigma2+p2*s^2)
-        # pixel hors support → variance p2
+        # Covariance
         alpha = p2t * s2 / (s2 + p2t * self.scale_factor**2)
 
-        # Partie projetée (dans l'image de H^T H)
+        # Projected
         mu_proj    = self._HtH(mu) * alpha
         mu_unproj  = (mu - self._HtH(mu)) * p2t  
 
         moy = mu_proj + mu_unproj
 
-        # Bruit
+        # Noise
         noise = torch.randn_like(z)
         noise_proj   = self._HtH(noise) * alpha.sqrt()
         noise_unproj = (noise - self._HtH(noise)) * p2t.sqrt()

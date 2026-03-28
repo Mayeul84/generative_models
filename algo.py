@@ -11,7 +11,7 @@ def inverse_variance_function(noise_level, model):
     closest_t_index = np.argmin(np.abs((1 - alphas_cumprod) - noise_level**2))
     return closest_t_index
 
-def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False, method_t_star="rho"):
+def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator, show_only_last=False, method_t_star="rho", sigma_noise=0.01, diffusion_steps_burn_in=20):
     assert operator.device == diffusing_model.device
     device = operator.device 
 
@@ -24,7 +24,6 @@ def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator
         z = torch.randn(x_true.shape, device=device)
     rho = rho
 
-    sigma_noise = 0.01
     x_flatten = x_true.flatten()  
     y_flatten = x_flatten + sigma_noise * torch.randn_like(x_flatten)
     y_flatten = operator.HtH.dot(y_flatten.cpu().numpy())
@@ -164,7 +163,7 @@ def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator
 
 
         # sample z via reverse diffusion : equation 7
-        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show, t_end=t_end, N_burn_in=Burn_in_steps)
+        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show, t_end=t_end, N_burn_in=Burn_in_steps, diffusion_steps_burn_in=diffusion_steps_burn_in)
 
         if isinstance(diffusing_model,LDM) and show:
             mse = torch.mean((z - x)**2)
