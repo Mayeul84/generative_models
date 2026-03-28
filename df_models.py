@@ -164,20 +164,20 @@ class DDPM:
     x_start = x_start.clamp(-1.,1.)
     return(x_start)
 
-  def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps, t_end=None):
+  def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps, t_end=None, N_burn_in=20):
         with torch.no_grad():  # mode eval
             xt = u_0 
             xhat = torch.randn(self.imgshape, device=self.device)
             # t_start = min(t_start, 100)
 
             if t_end is None:
-                if iteration < 20 : 
-                    t_end = self.num_diffusion_timesteps - (t_start //2)
+                if iteration < N_burn_in : 
+                    t_end = self.num_diffusion_timesteps - 60
                 else : 
                     t_end = self.num_diffusion_timesteps
             else:
-                if iteration < 20 : 
-                    t_end = self.num_diffusion_timesteps - (t_start //2)
+                if iteration < N_burn_in : 
+                    t_end = self.num_diffusion_timesteps - 60
                 else:
                     t_end = self.num_diffusion_timesteps - t_end
 
@@ -320,16 +320,22 @@ class LDM:
         l0 = (l - np.sqrt(1.0 - alpha_bar) * eps) / np.sqrt(alpha_bar)
         return l0.clamp(-1., 1.)
 
-    def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps):
+    def sampling_splitting_z(self, t_start, u_0, x_true, y, iteration, show_steps, t_end=None, N_burn_in=20):
         u_0 = u_0.to(self.device)
 
         with torch.no_grad():
             lt = self.encode(u_0)
 
-            if iteration < 20:
-                t_end = self.num_diffusion_timesteps - (t_start // 2)
+            if t_end is None:
+                if iteration <N_burn_in : 
+                    t_end = self.num_diffusion_timesteps - 60
+                else : 
+                    t_end = self.num_diffusion_timesteps
             else:
-                t_end = self.num_diffusion_timesteps
+                if iteration < N_burn_in : 
+                    t_end = self.num_diffusion_timesteps - 60
+                else:
+                    t_end = self.num_diffusion_timesteps - t_end
 
             diff_iter = self.reversed_time_steps[
                 self.num_diffusion_timesteps - t_start : t_end

@@ -100,8 +100,8 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             # méthode brillante:
             elif method_t_star == "estimated+ro":
 
-                sigma_estimated = estimate_sigma(x_original[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
-                sigma_latent_estimated = sigma_estimated / factor_j
+                #sigma_estimated = estimate_sigma(x_original[0].cpu().numpy(), channel_axis=0, average_sigmas=True)
+                sigma_latent_estimated = estimate_sigma(z_noisy[0].cpu().numpy(),channel_axis=0,average_sigmas=True)#sigma_estimated / factor_j
                 t_star = inverse_variance_function(sigma_latent_estimated,model=diffusing_model)
 
                 if sigma_estimated <= ro:
@@ -175,7 +175,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
 
         
         # Step 3 : Sample z via reverse diffusion : equation 7
-        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show, t_end=t_end)
+        z = diffusing_model.sampling_splitting_z(t_star, x, x_true, torch.tensor(y_flatten).reshape(1,3,256,256), n, show_steps=show, t_end=t_end, N_burn_in=Burn_in_steps)
 
         if isinstance(diffusing_model,LDM) and show:
             mse = torch.mean((z - x)**2)
