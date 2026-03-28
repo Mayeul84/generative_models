@@ -94,6 +94,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                     t_star = inverse_variance_function(sigma_estimated_latent,model=diffusing_model)
 
                 t_end = None
+                
             # méthode brillante:
             elif method_t_star == "estimated+ro":
 
@@ -136,6 +137,15 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                     t_star = inverse_variance_function(ro_min,model=diffusing_model)
                 else:
                     t_star = inverse_variance_function(ro_min,model=diffusing_model)
+
+                t_end = None
+
+            elif method_t_star == "ro_chen":
+                ro_min = 0.04
+                if ro < ro_min:
+                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+ro_min**2)),model=diffusing_model)
+                else:
+                    t_star = inverse_variance_function(np.sqrt(1 - 1/(1+ro**2)),model=diffusing_model)
 
                 t_end = None
 
