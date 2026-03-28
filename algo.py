@@ -117,8 +117,12 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 if show:
                     print(f"\nt_star: {t_star} and t_end: {t_end}.   ")
 
-
-            pbar.set_postfix(t_star=t_star,t_end=t_end,deltat=t_star-t_end)
+            if t_end is None:
+                deltat = t_star
+            else:
+                deltat = t_star - t_end
+                
+            pbar.set_postfix(t_star=t_star,t_end=t_end,deltat=deltat)
             if t_end == t_star:
                 t_end -= 2
 
