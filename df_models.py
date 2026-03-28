@@ -176,7 +176,10 @@ class DDPM:
                 else : 
                     t_end = self.num_diffusion_timesteps
             else:
-                t_end = self.num_diffusion_timesteps - t_end
+                if iteration < 20 : 
+                    t_end = self.num_diffusion_timesteps - (t_start //2)
+                else:
+                    t_end = self.num_diffusion_timesteps - t_end
 
             diff_iter = self.reversed_time_steps[self.num_diffusion_timesteps - t_start:t_end]
 

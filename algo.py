@@ -107,7 +107,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
                 if sigma_estimated <= ro:
                     t_end = 0
                 else:
-                    sigma_latent_estimated_end = torch.sqrt(sigma_estimated**2-ro**2) / factor_j
+                    sigma_latent_estimated_end = np.sqrt(sigma_estimated**2-ro**2) / factor_j
                     t_end = inverse_variance_function(sigma_latent_estimated_end,model=diffusing_model)
 
                 if show:
@@ -125,7 +125,7 @@ def PNP_SGS(ro, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator,
             if show:
                 #print(f"noise level estimated = {noise_level}")
                 print(f"number of noising steps = {deltat}")
-                
+
         else:
             # méthode incorrecte:
             if method_t_star == "estimated":
