@@ -26,7 +26,7 @@ def PNP_SGS(rho, MCMC_steps, x_true, y, Burn_in_steps, diffusing_model, operator
 
     x_flatten = x_true.flatten()  
     y_flatten = x_flatten #+ 
-    y_flatten = operator.HtH.dot(y_flatten.cpu().numpy()) + sigma_noise * torch.randn_like(x_flatten)
+    y_flatten = operator.HtH.dot(y_flatten.cpu().numpy()) + sigma_noise * np.random.randn(*x_flatten.shape)
 
     N_burn_in = Burn_in_steps
     x_samples = []
